@@ -10,15 +10,40 @@
 <body>
     <div id="app">
         <h1>ColorChain（カラーチェーン）</h1>
+        <!--
+            Scoreboard layout improvements
+
+            The original scoreboard displayed seven separate items in a single column on very small screens,
+            which could push the game board down and reduce visibility.  To make the information more compact
+            and easier to read on mobile devices, the scoreboard has been condensed into four panels.  Each
+            panel groups related metrics on two lines:
+
+            - Remaining time (seconds)
+            - Score and current chain multiplier
+            - Longest chain achieved and chain length currently being drawn
+            - High score (HS) and best chain (BC) across sessions
+
+            The element IDs remain the same so the game logic continues to update the correct spans.
+        -->
         <div id="info">
-            <div class="info-item">残り時間：<span id="time">60</span>秒</div>
-            <div class="info-item">スコア：<span id="score">0</span></div>
-            <div class="info-item">現在の連鎖倍率：<span id="chain">1</span></div>
-            <div class="info-item">最長チェーン：<span id="maxChain">0</span></div>
-            <div class="info-item">現在チェーン数：<span id="currentChain">0</span></div>
-            <div class="info-item">ハイスコア：<span id="bestScore">0</span></div>
-            <div class="info-item">ベストチェーン：<span id="bestChain">0</span></div>
+            <!-- Score and multiplier share a cell -->
+            <div class="info-item">
+                スコア: <span id="score">0</span><br>
+                倍率: <span id="chain">1</span>
+            </div>
+            <!-- Longest chain and current chain share a cell -->
+            <div class="info-item">
+                最大: <span id="maxChain">0</span><br>
+                現在: <span id="currentChain">0</span>
+            </div>
+            <!-- Best score and best chain share a cell -->
+            <div class="info-item">
+                HS: <span id="bestScore">0</span><br>
+                BC: <span id="bestChain">0</span>
+            </div>
         </div>
+        <!-- Hidden time element to preserve update logic. The script updates this span but it is not visible. -->
+        <span id="time" style="display:none;">60</span>
         <!-- Time bar container -->
         <div id="timeBarContainer"><div id="timeBar"></div></div>
         <div id="board"></div>

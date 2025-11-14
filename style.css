@@ -36,32 +36,28 @@ h1 {
 }
 
 /* Info scoreboard styling */
+/* Scoreboard container */
 #info {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
+    /* Scoreboard uses a responsive grid. Each panel has a minimum width so that
+       on narrow screens two panels wrap to the next row.  A slightly smaller
+       minimum width (110px) keeps the grid compact on small phones while
+       allowing multiple columns on larger screens. */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 6px;
     margin-bottom: 12px;
-    font-size: clamp(14px, 3vw, 16px);
+    font-size: clamp(12px, 3vw, 16px);
+    line-height: 1.3;
 }
 
 .info-item {
-    flex: 1 1 45%;
+    /* Center text and allow wrapping. Bold weight for labels. */
     text-align: center;
     font-weight: bold;
     word-break: break-word;
-}
-
-/* Stack scoreboard items on very narrow screens */
-@media (max-width: 480px) {
-    #info {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .info-item {
-        flex: none;
-        width: 100%;
-    }
+    background: rgba(255,255,255,0.8);
+    padding: 4px;
+    border-radius: 6px;
 }
 
 /* Time bar */
