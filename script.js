@@ -575,6 +575,43 @@ function handlePointerEnd(e) {
 document.addEventListener('pointerup', handlePointerEnd);
 document.addEventListener('pointercancel', handlePointerEnd);
 
+// Touch event fallbacks for mobile browsers
+// These handlers directly use touch coordinates to determine the tile under the finger.
+// They run in parallel with pointer events; isDrawing guards ensure no duplicate processing.
+boardElement.addEventListener('touchstart', (e) => {
+    if (timeLeft <= 0) return;
+    if (e.touches.length > 0) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!elem) return;
+        const tile = elem.closest('.tile');
+        if (!tile) return;
+        startSelection(tile);
+    }
+}, { passive: false });
+
+boardElement.addEventListener('touchmove', (e) => {
+    if (!isDrawing) return;
+    if (e.touches.length > 0) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!elem) return;
+        const tile = elem.closest('.tile');
+        if (!tile) return;
+        handleEnter(tile);
+    }
+}, { passive: false });
+
+boardElement.addEventListener('touchend', () => {
+    finishSelection();
+});
+
+boardElement.addEventListener('touchcancel', () => {
+    finishSelection();
+});
+
 // Overlay buttons
 playButton.addEventListener('click', () => {
     resetOverlay();
