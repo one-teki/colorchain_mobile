@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!--
+      Ensure the viewport scales correctly on mobile devices.  The viewport-fit=cover
+      directive allows the page to extend into safe areas on devices with display
+      cutouts (like iPhone notch).  Combined with env(safe-area-*) padding in
+      the stylesheet, this keeps content from being overlapped by notches or
+      rounded corners while still filling the screen.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ColorChain（カラーチェーン）</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>ColorChain（カラーチェーン）</h1>
+        <div id="info">
+            <div class="info-item">残り時間：<span id="time">60</span>秒</div>
+            <div class="info-item">スコア：<span id="score">0</span></div>
+            <div class="info-item">現在の連鎖倍率：<span id="chain">1</span></div>
+            <div class="info-item">最長チェーン：<span id="maxChain">0</span></div>
+            <div class="info-item">現在チェーン数：<span id="currentChain">0</span></div>
+            <div class="info-item">ハイスコア：<span id="bestScore">0</span></div>
+            <div class="info-item">ベストチェーン：<span id="bestChain">0</span></div>
+        </div>
+        <!-- Time bar visualisation -->
+        <div id="timeBarContainer"><div id="timeBar"></div></div>
+        <div id="board"></div>
+        <div id="controls">
+            <!-- We keep start and share buttons as backup for smaller screens -->
+            <button id="startButton" style="display:none;">ゲームスタート</button>
+            <button id="shareButton" style="display:none;">結果をシェア</button>
+        </div>
+        <div id="message"></div>
+    </div>
+    <!-- Onboarding and game over overlay -->
+    <div id="overlay" class="overlay">
+        <div class="modal">
+            <h2 id="overlayTitle">遊び方</h2>
+            <ul id="overlayInstructions">
+                <li>同じ色のタイルを3つ以上なぞって消そう！</li>
+                <li>長くつなげるほどスコアアップ！</li>
+                <li>角を曲がるとさらにボーナス！</li>
+                <li>連続で消すほど倍率アップ！</li>
+                <li>60秒でハイスコアを目指せ！</li>
+            </ul>
+            <div id="finalScore" style="display:none; margin-bottom:10px;"></div>
+            <button id="playButton">スタート</button>
+            <button id="replayButton" style="display:none;">もう一回遊ぶ</button>
+            <button id="shareButtonModal" style="display:none;">結果をシェア</button>
+        </div>
+    </div>
+
+    <!-- Cut-in overlay for events like board refresh -->
+    <div id="breakCutIn" class="cutin hidden">BREAK</div>
+    <script src="script.js"></script>
+</body>
+</html>
