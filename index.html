@@ -25,21 +25,37 @@
 
             The element IDs remain the same so the game logic continues to update the correct spans.
         -->
+        <!--
+            Premium scoreboard layout
+
+            The scoreboard has been redesigned to present each statistic in a clear
+            card-like panel with descriptive labels.  A flexbox layout ensures the
+            three panels sit side by side on typical smartphone screens but wrap
+            gracefully on very narrow viewports.  Each panel contains two rows:
+            a label and its corresponding value.  Chain multiplier shows the
+            multiplier value followed by “x” for clarity.
+        -->
         <div id="info">
-            <!-- Score and multiplier share a cell -->
+            <!-- Score and chain multiplier -->
             <div class="info-item">
-                スコア: <span id="score">0</span><br>
-                倍率: <span id="chain">1</span>
+                <div class="label">スコア</div>
+                <div class="value"><span id="score">0</span></div>
+                <div class="label">連鎖倍率</div>
+                <div class="value"><span id="chain">1</span>x</div>
             </div>
-            <!-- Longest chain and current chain share a cell -->
+            <!-- Chain statistics -->
             <div class="info-item">
-                最大: <span id="maxChain">0</span><br>
-                現在: <span id="currentChain">0</span>
+                <div class="label">最大チェーン</div>
+                <div class="value"><span id="maxChain">0</span></div>
+                <div class="label">現在チェーン</div>
+                <div class="value"><span id="currentChain">0</span></div>
             </div>
-            <!-- Best score and best chain share a cell -->
+            <!-- Record statistics -->
             <div class="info-item">
-                HS: <span id="bestScore">0</span><br>
-                BC: <span id="bestChain">0</span>
+                <div class="label">ハイスコア</div>
+                <div class="value"><span id="bestScore">0</span></div>
+                <div class="label">ベストチェーン</div>
+                <div class="value"><span id="bestChain">0</span></div>
             </div>
         </div>
         <!-- Hidden time element to preserve update logic. The script updates this span but it is not visible. -->
