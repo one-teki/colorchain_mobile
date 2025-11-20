@@ -177,109 +177,6 @@ const playButton = document.getElementById('playButton');
 const replayButton = document.getElementById('replayButton');
 const shareButtonModal = document.getElementById('shareButtonModal');
 
-// Global ranking container (displayed at game end)
-const globalRankingElement = document.getElementById('globalRanking');
-
-// -----------------------------------------------------------------------------
-// Firebase initialisation
-//
-// To enable cloud saving and leaderboard functionality, we initialise the
-// Firebase application and Firestore database. Replace the placeholder
-// configuration below with your own Firebase project credentials. You can find
-// these values in your Firebase console under Project settings.
-// Firebase configuration for your project.  These values are safe to expose
-// in your client application because security rules restrict what can be
-// written.  Replace these values with those found in your Firebase console.
-const firebaseConfig = {
-    apiKey: "AIzaSyDIOJOKmPvXVC_5p7WrvV2V7pizKzeiNZL5g",
-    authDomain: "colorchain-b5640.firebaseapp.com",
-    projectId: "colorchain-b5640",
-    storageBucket: "colorchain-b5640.firebasestorage.app",
-    messagingSenderId: "474735627254",
-    appId: "1:474735627254:web:a4122ffa09f99e823455d7"
-};
-
-// Only initialise Firebase if the firebase object is available (scripts loaded)
-let db;
-if (typeof firebase !== 'undefined' && firebase && firebase.initializeApp) {
-    try {
-        // Initialise Firebase using the compat API.  The config above
-        // registers your project and exposes firebase.firestore().  If an
-        // initialisation error occurs (for example, if the config is
-        // misconfigured), leaderboard functionality will be disabled.
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-    } catch (e) {
-        console.warn('Firebase initialisation failed. Leaderboard will be disabled.', e);
-    }
-} else {
-    console.warn('Firebase SDK not loaded. Leaderboard will be disabled.');
-}
-
-/**
- * Submit the player's score and max chain to Firestore. If Firebase is not
- * initialised or unavailable, this function silently fails. Player name is
- * stored in localStorage under the key `colorchain-playerName`. If no name is
- * stored, "Anonymous" is used.
- *
- * @param {number} scoreVal The final score to submit.
- * @param {number} chainVal The highest chain achieved in the run.
- */
-/**
- * Submit the player's score and max chain to Firestore.  The caller must
- * provide a player identifier (e.g. three-character initials).  If the
- * Firestore instance is not available, the function silently does
- * nothing.
- *
- * @param {string} name Initials to save with the score (e.g. "ABC").
- * @param {number} scoreVal The final score to submit.
- * @param {number} chainVal The highest chain achieved in the run.
- */
-async function submitGlobalScore(name, scoreVal, chainVal) {
-    if (!db) return;
-    try {
-        await db.collection('colorchain_scores').add({
-            name: name || 'Anonymous',
-            score: scoreVal,
-            maxChain: chainVal,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    } catch (err) {
-        console.error('Error submitting score:', err);
-    }
-}
-
-/**
- * Load the top players from Firestore ordered by score descending. Returns an
- * array of objects containing name, score and maxChain. Limits to a default
- * number of entries (5). Returns an empty array if Firestore is unavailable.
- *
- * @param {number} limit The maximum number of entries to retrieve. Defaults to 5.
- * @returns {Promise<Array<{name: string, score: number, maxChain: number}>>}
- */
-async function loadGlobalRanking(limit = 5) {
-    if (!db) return [];
-    try {
-        const snapshot = await db.collection('colorchain_scores')
-            .orderBy('score', 'desc')
-            .limit(limit)
-            .get();
-        const list = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            list.push({
-                name: data.name || 'Anonymous',
-                score: data.score || 0,
-                maxChain: data.maxChain || 0
-            });
-        });
-        return list;
-    } catch (err) {
-        console.error('Error loading ranking:', err);
-        return [];
-    }
-}
-
 const breakCutIn = document.getElementById('breakCutIn');
 const timeBar = document.getElementById('timeBar');
 
@@ -367,11 +264,6 @@ function startGame() {
     boardElement.style.pointerEvents = 'auto';
     // Hide overlay
     overlay.classList.add('hidden');
-    // hide global ranking panel on new game start
-    if (globalRankingElement) {
-        globalRankingElement.style.display = 'none';
-        globalRankingElement.innerHTML = '';
-    }
 }
 
 /**
@@ -389,59 +281,6 @@ function endGame() {
     shareButtonModal.style.display = 'block';
     overlay.classList.remove('hidden');
     shareButtonModal.onclick = () => shareResult();
-
-    // Submit score to the global leaderboard and then display the updated ranking.
-    // We first check whether this run qualifies for the top list.  If it does,
-    // the player is prompted to enter a three-character identifier.  Otherwise
-    // the score is saved anonymously.  The check is performed against the
-    // current top 5 scores to minimise Firestore reads.
-    (async () => {
-        // Load current top scores
-        let current = await loadGlobalRanking(5);
-        // Determine if the player qualifies for the leaderboard.  A score
-        // qualifies if there are fewer than 5 entries or the new score is
-        // greater than the lowest score in the list.
-        let qualifies = false;
-        if (current.length < 5) {
-            qualifies = true;
-        } else if (current.length > 0 && score > current[current.length - 1].score) {
-            qualifies = true;
-        }
-        // Determine player identifier
-        let playerInitials = 'Anonymous';
-        if (qualifies) {
-            // Prompt for three-character initials.  The prompt may return null
-            // or an empty string; default to ??? in that case.  Trim and
-            // uppercase the first three characters.
-            const input = prompt('ランキング入り！3文字のイニシャルを入力してください（例：ABC）', '');
-            if (input && input.trim().length > 0) {
-                playerInitials = input.trim().substring(0, 3).toUpperCase();
-            } else {
-                playerInitials = '???';
-            }
-        }
-        await submitGlobalScore(playerInitials, score, maxChain);
-        // Reload ranking after inserting the new score so the list is
-        // up-to-date.
-        const list = await loadGlobalRanking(5);
-        if (!globalRankingElement) return;
-        globalRankingElement.innerHTML = '';
-        if (list.length > 0) {
-            const heading = document.createElement('div');
-            heading.textContent = 'グローバルランキング';
-            heading.style.fontWeight = 'bold';
-            heading.style.marginBottom = '4px';
-            globalRankingElement.appendChild(heading);
-            list.forEach((entry, index) => {
-                const line = document.createElement('div');
-                line.textContent = `${index + 1}. ${entry.name} - スコア ${entry.score} / チェーン ${entry.maxChain}`;
-                globalRankingElement.appendChild(line);
-            });
-            globalRankingElement.style.display = 'block';
-        } else {
-            globalRankingElement.style.display = 'none';
-        }
-    })();
 }
 
 /**
@@ -503,8 +342,6 @@ function resetOverlay() {
     playButton.style.display = 'block';
     replayButton.style.display = 'none';
     shareButtonModal.style.display = 'none';
-    // hide global ranking container
-    if (globalRankingElement) globalRankingElement.style.display = 'none';
 }
 
 /**
@@ -912,8 +749,3 @@ initBoard();
 boardElement.style.pointerEvents = 'none';
 resetOverlay();
 overlay.classList.remove('hidden');
-
-// In previous versions of the game, players were prompted to enter a
-// display name on first load.  To enhance privacy, the game now uses
-// anonymous identifiers by default and only prompts for initials when
-// the player achieves a top score.  No name is stored in localStorage.

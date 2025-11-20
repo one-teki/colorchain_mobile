@@ -6,18 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ColorChain（カラーチェーン）</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Firebase App (the core Firebase SDK) -->
-    <!-- TODO: Replace the placeholder config values with your own Firebase project configuration. -->
-    <!--
-        Use the compat versions of the Firebase SDK for GitHub Pages.  The standard
-        ESM builds (firebase-app.js / firebase-firestore.js) export ES modules
-        which cannot be imported from a plain <script> tag.  The compat builds
-        attach the firebase namespace to window and provide the same API as the
-        modular version, so you can call firebase.initializeApp() and
-        firebase.firestore() without additional tooling.
-    -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="app">
@@ -78,7 +66,7 @@
         <div id="message"></div>
     </div>
     <!-- Overlay for onboarding and results -->
-        <div id="overlay" class="overlay">
+    <div id="overlay" class="overlay">
         <div class="modal">
             <h2 id="overlayTitle">遊び方</h2>
             <ul id="overlayInstructions">
@@ -89,8 +77,6 @@
                 <li>60秒でハイスコアを目指せ！</li>
             </ul>
             <div id="finalScore" style="display:none; margin-bottom:10px;"></div>
-                <!-- Container for displaying global high score ranking -->
-                <div id="globalRanking" style="display:none; margin-bottom:10px;"></div>
             <button id="playButton">スタート</button>
             <button id="replayButton" style="display:none;">もう一回遊ぶ</button>
             <button id="shareButtonModal" style="display:none;">結果をシェア</button>
