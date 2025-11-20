@@ -33,6 +33,107 @@ let maxTimeForBar = 60;
 // Web Audio context for sound effects
 let audioCtx = null;
 
+// Colour values for particle and ripple effects. These roughly correspond to the gradient colours used
+// on the tiles but with fixed opacity. The values are used to derive particle and ripple
+// colours when tiles burst.
+const COLOUR_VALUES = {
+    red:    { r: 231, g: 76,  b: 60,  ripple: 'rgba(231,76,60,0.5)' },
+    blue:   { r: 52,  g: 152, b: 219, ripple: 'rgba(52,152,219,0.5)' },
+    yellow: { r: 241, g: 196, b: 15,  ripple: 'rgba(241,196,15,0.5)' },
+    green:  { r: 46,  g: 204, b: 113, ripple: 'rgba(46,204,113,0.5)' },
+    purple: { r: 155, g: 89,  b: 182, ripple: 'rgba(155,89,182,0.5)' }
+};
+
+/**
+ * Update glow intensity for the current selection.  The glow intensity and size grow
+ * with the length of the selected path to emphasise longer chains.  This function
+ * applies a dynamic box-shadow to each selected tile based on the current path length.
+ */
+function updateSelectionGlow() {
+    const n = selectedPath.length;
+    // Early exit if no tiles
+    if (n === 0) return;
+    // Compute an intensity ratio capped at 1
+    const intensity = Math.min(1, 0.35 + n * 0.08);
+    const spread = 2 + n * 2; // outer spread for shadow
+    const blur = 4 + n * 4;   // blur radius grows with chain length
+    // For each tile in selection, update style
+    selectedPath.forEach(tile => {
+        // Use a blue glow consistent with default selected style but scale intensity
+        tile.style.boxShadow = `0 0 ${blur}px ${spread}px rgba(100, 180, 255, ${intensity.toFixed(2)})`;
+    });
+}
+
+/**
+ * Clear dynamic glow from all tiles in the current selection.  This resets the
+ * box-shadow style applied by updateSelectionGlow().  Should be called when
+ * finishing or cancelling a selection.
+ */
+function clearSelectionGlow() {
+    selectedPath.forEach(tile => {
+        tile.style.boxShadow = '';
+    });
+}
+
+/**
+ * Spawn particle and ripple effects at a tile's position.  This function creates
+ * temporary DOM elements positioned over the target tile that animate outward
+ * and then remove themselves.  The colours are derived from the tile's colour class.
+ * @param {HTMLElement} tileElement The tile DOM element.
+ * @param {string} colourName The colour class of the tile (e.g. 'red').
+ */
+function spawnEffectsAtTile(tileElement, colourName) {
+    // Ensure colour data exists
+    const colour = COLOUR_VALUES[colourName];
+    if (!colour) return;
+    // Determine position relative to board
+    const boardRect = boardElement.getBoundingClientRect();
+    const tileRect = tileElement.getBoundingClientRect();
+    // Compute offsets relative to board's content area. Subtract board's padding so effects align
+    const computed = window.getComputedStyle(boardElement);
+    const paddingX = parseFloat(computed.paddingLeft);
+    const paddingY = parseFloat(computed.paddingTop);
+    const x = tileRect.left - boardRect.left - paddingX;
+    const y = tileRect.top - boardRect.top - paddingY;
+    // Create effect container
+    const container = document.createElement('div');
+    container.className = 'effect-container';
+    container.style.position = 'absolute';
+    container.style.pointerEvents = 'none';
+    container.style.left = `${x}px`;
+    container.style.top = `${y}px`;
+    container.style.width = `${tileRect.width}px`;
+    container.style.height = `${tileRect.height}px`;
+    container.style.zIndex = 200;
+    // Generate particles
+    const particleCount = 8;
+    for (let i = 0; i < particleCount; i++) {
+        const p = document.createElement('span');
+        p.className = 'particle';
+        // Random direction offsets within a range relative to tile size
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 0.6 + 0.4; // between 0.4 and 1.0 times tile size
+        const dx = Math.cos(angle) * distance * tileRect.width;
+        const dy = Math.sin(angle) * distance * tileRect.height;
+        p.style.setProperty('--dx', `${dx.toFixed(1)}px`);
+        p.style.setProperty('--dy', `${dy.toFixed(1)}px`);
+        // Particle colour: use light version of tile colour
+        p.style.backgroundColor = `rgba(${colour.r}, ${colour.g}, ${colour.b}, 0.8)`;
+        container.appendChild(p);
+    }
+    // Create ripple element
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.backgroundColor = colour.ripple;
+    container.appendChild(ripple);
+    // Append container to board
+    boardElement.appendChild(container);
+    // Remove after animation completes
+    setTimeout(() => {
+        container.remove();
+    }, 600);
+}
+
 /**
  * Play a short beep sound when a chain is cleared.
  */
@@ -75,6 +176,93 @@ const finalScoreDiv = document.getElementById('finalScore');
 const playButton = document.getElementById('playButton');
 const replayButton = document.getElementById('replayButton');
 const shareButtonModal = document.getElementById('shareButtonModal');
+
+// Global ranking container (displayed at game end)
+const globalRankingElement = document.getElementById('globalRanking');
+
+// -----------------------------------------------------------------------------
+// Firebase initialisation
+//
+// To enable cloud saving and leaderboard functionality, we initialise the
+// Firebase application and Firestore database. Replace the placeholder
+// configuration below with your own Firebase project credentials. You can find
+// these values in your Firebase console under Project settings.
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Only initialise Firebase if the firebase object is available (scripts loaded)
+let db;
+if (typeof firebase !== 'undefined' && firebase && firebase.initializeApp) {
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+    } catch (e) {
+        console.warn('Firebase initialisation failed. Leaderboard will be disabled.', e);
+    }
+} else {
+    console.warn('Firebase SDK not loaded. Leaderboard will be disabled.');
+}
+
+/**
+ * Submit the player's score and max chain to Firestore. If Firebase is not
+ * initialised or unavailable, this function silently fails. Player name is
+ * stored in localStorage under the key `colorchain-playerName`. If no name is
+ * stored, "Anonymous" is used.
+ *
+ * @param {number} scoreVal The final score to submit.
+ * @param {number} chainVal The highest chain achieved in the run.
+ */
+async function submitGlobalScore(scoreVal, chainVal) {
+    if (!db) return;
+    const name = localStorage.getItem('colorchain-playerName') || 'Anonymous';
+    try {
+        await db.collection('colorchain_scores').add({
+            name: name,
+            score: scoreVal,
+            maxChain: chainVal,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (err) {
+        console.error('Error submitting score:', err);
+    }
+}
+
+/**
+ * Load the top players from Firestore ordered by score descending. Returns an
+ * array of objects containing name, score and maxChain. Limits to a default
+ * number of entries (5). Returns an empty array if Firestore is unavailable.
+ *
+ * @param {number} limit The maximum number of entries to retrieve. Defaults to 5.
+ * @returns {Promise<Array<{name: string, score: number, maxChain: number}>>}
+ */
+async function loadGlobalRanking(limit = 5) {
+    if (!db) return [];
+    try {
+        const snapshot = await db.collection('colorchain_scores')
+            .orderBy('score', 'desc')
+            .limit(limit)
+            .get();
+        const list = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            list.push({
+                name: data.name || 'Anonymous',
+                score: data.score || 0,
+                maxChain: data.maxChain || 0
+            });
+        });
+        return list;
+    } catch (err) {
+        console.error('Error loading ranking:', err);
+        return [];
+    }
+}
 
 const breakCutIn = document.getElementById('breakCutIn');
 const timeBar = document.getElementById('timeBar');
@@ -163,6 +351,11 @@ function startGame() {
     boardElement.style.pointerEvents = 'auto';
     // Hide overlay
     overlay.classList.add('hidden');
+    // hide global ranking panel on new game start
+    if (globalRankingElement) {
+        globalRankingElement.style.display = 'none';
+        globalRankingElement.innerHTML = '';
+    }
 }
 
 /**
@@ -180,6 +373,28 @@ function endGame() {
     shareButtonModal.style.display = 'block';
     overlay.classList.remove('hidden');
     shareButtonModal.onclick = () => shareResult();
+
+    // Submit score to global leaderboard and load ranking
+    submitGlobalScore(score, maxChain);
+    loadGlobalRanking(5).then(list => {
+        if (!globalRankingElement) return;
+        globalRankingElement.innerHTML = '';
+        if (list.length > 0) {
+            const heading = document.createElement('div');
+            heading.textContent = 'グローバルランキング';
+            heading.style.fontWeight = 'bold';
+            heading.style.marginBottom = '4px';
+            globalRankingElement.appendChild(heading);
+            list.forEach((entry, index) => {
+                const line = document.createElement('div');
+                line.textContent = `${index + 1}. ${entry.name} - スコア ${entry.score} / チェーン ${entry.maxChain}`;
+                globalRankingElement.appendChild(line);
+            });
+            globalRankingElement.style.display = 'block';
+        } else {
+            globalRankingElement.style.display = 'none';
+        }
+    });
 }
 
 /**
@@ -241,6 +456,8 @@ function resetOverlay() {
     playButton.style.display = 'block';
     replayButton.style.display = 'none';
     shareButtonModal.style.display = 'none';
+    // hide global ranking container
+    if (globalRankingElement) globalRankingElement.style.display = 'none';
 }
 
 /**
@@ -262,6 +479,8 @@ function startSelection(tile) {
     selectedPath.push(tile);
     tile.classList.add('selected');
     currentChainElement.textContent = selectedPath.length;
+    // Update glow intensity for the first tile selection
+    updateSelectionGlow();
 }
 
 /**
@@ -281,8 +500,11 @@ function handleEnter(tile) {
         if (idx === selectedPath.length - 2) {
             const lastTile = selectedPath.pop();
             lastTile.classList.remove('selected');
+            lastTile.style.boxShadow = '';
             updateTurnCount();
             currentChainElement.textContent = selectedPath.length;
+            // Update glow intensity after backtracking
+            updateSelectionGlow();
         }
         return;
     }
@@ -303,6 +525,8 @@ function handleEnter(tile) {
     selectedPath.push(tile);
     tile.classList.add('selected');
     currentChainElement.textContent = selectedPath.length;
+    // Update glow intensity for the selection path
+    updateSelectionGlow();
 }
 
 /**
@@ -338,6 +562,8 @@ function updateTurnCount() {
 function finishSelection() {
     if (!isDrawing) return;
     isDrawing = false;
+    // Clear any dynamic glow styles from currently selected tiles
+    clearSelectionGlow();
     if (selectedPath.length >= 3) {
         const pathLength = selectedPath.length;
         // calculate score and add
@@ -375,9 +601,17 @@ function finishSelection() {
         selectedPath.forEach(tile => {
             const rr = parseInt(tile.dataset.row);
             const cc = parseInt(tile.dataset.col);
+            // Determine the colour name before removing from board
+            const colName = board[rr][cc];
+            // Remove tile from game state
             board[rr][cc] = null;
+            // Remove selection class and dynamic glow
             tile.classList.remove('selected');
+            tile.style.boxShadow = '';
+            // Add burst animation class for scale/opacity animation
             tile.classList.add('burst');
+            // Spawn particle and ripple effects at this tile
+            spawnEffectsAtTile(tile, colName);
             setTimeout(() => {
                 tile.classList.remove('burst');
             }, 400);
@@ -631,3 +865,23 @@ initBoard();
 boardElement.style.pointerEvents = 'none';
 resetOverlay();
 overlay.classList.remove('hidden');
+
+// Prompt the player for a name on first load if none is set.  This name will
+// appear in the global leaderboard.  Stored in localStorage to persist
+// between sessions.  The prompt appears only once.
+(() => {
+    try {
+        const key = 'colorchain-playerName';
+        const existing = localStorage.getItem(key);
+        if (!existing) {
+            const name = prompt('プレイヤー名を入力してください（ランキングに表示されます）:', '');
+            if (name && name.trim().length > 0) {
+                localStorage.setItem(key, name.trim());
+            } else {
+                localStorage.setItem(key, 'Anonymous');
+            }
+        }
+    } catch (_) {
+        // ignore errors (e.g., prompt blocked)
+    }
+})();

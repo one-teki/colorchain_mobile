@@ -116,6 +116,8 @@ h1 {
     padding: 6px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    /* Make board a positioned container so absolute children (effects) align correctly */
+    position: relative;
 }
 
 /* Landscape orientation sizing */
@@ -175,6 +177,45 @@ h1 {
 
 .tile.fall {
     animation: jelly-drop 0.4s ease;
+}
+
+/* Particle and ripple effects for tile bursting */
+.effect-container {
+    /* Nothing here; container styling is applied inline in script */
+}
+
+/* Individual particle dot */
+.particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    will-change: transform, opacity;
+    animation: particle-emit 0.6s ease-out forwards;
+}
+
+@keyframes particle-emit {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.6); opacity: 0; }
+}
+
+/* Ripple effect emanating from the centre of the tile */
+.ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.6;
+    will-change: transform, opacity;
+    animation: ripple-animate 0.5s ease-out forwards;
+}
+
+@keyframes ripple-animate {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
 }
 
 /* Overlay for onboarding and results */

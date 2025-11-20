@@ -6,10 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ColorChain（カラーチェーン）</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Firebase App (the core Firebase SDK) -->
+    <!-- TODO: Replace the placeholder config values with your own Firebase project configuration. -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
 </head>
 <body>
     <div id="app">
-        <h1>ColorChain（カラーチェーン）</h1>
+        <h1>ColorChain</h1>
         <!--
             Scoreboard layout improvements
 
@@ -66,7 +70,7 @@
         <div id="message"></div>
     </div>
     <!-- Overlay for onboarding and results -->
-    <div id="overlay" class="overlay">
+        <div id="overlay" class="overlay">
         <div class="modal">
             <h2 id="overlayTitle">遊び方</h2>
             <ul id="overlayInstructions">
@@ -77,6 +81,8 @@
                 <li>60秒でハイスコアを目指せ！</li>
             </ul>
             <div id="finalScore" style="display:none; margin-bottom:10px;"></div>
+                <!-- Container for displaying global high score ranking -->
+                <div id="globalRanking" style="display:none; margin-bottom:10px;"></div>
             <button id="playButton">スタート</button>
             <button id="replayButton" style="display:none;">もう一回遊ぶ</button>
             <button id="shareButtonModal" style="display:none;">結果をシェア</button>
