@@ -8,8 +8,16 @@
     <link rel="stylesheet" href="style.css">
     <!-- Firebase App (the core Firebase SDK) -->
     <!-- TODO: Replace the placeholder config values with your own Firebase project configuration. -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+    <!--
+        Use the compat versions of the Firebase SDK for GitHub Pages.  The standard
+        ESM builds (firebase-app.js / firebase-firestore.js) export ES modules
+        which cannot be imported from a plain <script> tag.  The compat builds
+        attach the firebase namespace to window and provide the same API as the
+        modular version, so you can call firebase.initializeApp() and
+        firebase.firestore() without additional tooling.
+    -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="app">
